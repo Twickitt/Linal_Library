@@ -34,11 +34,32 @@ namespace linalg
         Matrix() noexcept {}; //default constr
         Matrix(const Matrix& other); //copying constr, no noexcept потому, что не можем гарантировать отсутствие исключений(например при выделении памяти)
         Matrix(Matrix&& other) noexcept; //moving constr
+        Matrix(int rows, int columns); //добавил конструктор с параметрами
         ~Matrix() {delete[] m_ptr;} //destructor(~ обозначает деструктор)
 
         //copying and assignment opperators(используем operator= для перегрузки)
         Matrix& operator=(const Matrix& other); // оператор копирующего присваивания 
         Matrix& operator=(Matrix&& other) noexcept; // оператор перемещающего присваивания(не const так как забирает русурсы у объекта при копировании)
 
+
+        //matrix Operators
+        //subtraction  
+        Matrix operator -() const;
+        Matrix operator -(const Matrix& other) const;
+        Matrix operator -=(const Matrix& other);
+        //smmation
+        Matrix operator +() const;
+        Matrix operator +(const Matrix& other) const;
+        Matrix operator +=(const Matrix& other);
+        //checking equalities and inequalities
+        bool operator ==(const Matrix&) const;
+        bool operator !=(const Matrix&) const;
+        //multiplication
+        Matrix operator *(const Matrix& other); //матрица на матрицу 
+        friend Matrix operator *(double x, const Matrix& other); //число на матрицу  
+        Matrix operator *(double x) const;
+        Matrix operator *=(const Matrix& other); //умножение и присваивание результата операции
+        Matrix operator *=(double x); //поэлементарное умножение и присваивание результата 
+    
     };
 }
