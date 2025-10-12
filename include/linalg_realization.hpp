@@ -27,16 +27,17 @@ public:
     void reshape(size_t rows, size_t cols);
     void reserve(size_t n);
     void clear() noexcept; // очистка матрицы не дает исключений и ошибок, вместимость прежняя 
-    void shrink_to_fit(size_t size);
+    void shrink_to_fit();
     void swap(Matrix& other) noexcept; //смена элементов тоже не дает исключений и ошибок
-    void swap(Matrix& first, Matrix& second) noexcept {first.swap(second);} //глобальная функция обмена между двумя матрицами 
+    friend void swap(Matrix& first, Matrix& second) noexcept {first.swap(second);} //глобальная функция обмена между двумя матрицами 
+   
     //matrix constructors 
-    Matrix() noexcept : m_rows(0), m_columns(0), m_capacity(0), m_ptr(nullptr){} //default constr, m_capacity = 0 because of 0 size of the matrix 
+    Matrix() noexcept : m_rows{0}, m_columns{0}, m_capacity{0}, m_ptr(nullptr){} //default constr, m_capacity = 0 because of 0 size of the matrix 
     Matrix(const Matrix& other); //copying constr, no noexcept потому, что не можем гарантировать отсутствие исключений(например при выделении памяти)
     Matrix(Matrix&& other) noexcept; //moving constr
-    Matrix(int rows, int columns); //добавил конструктор с параметрами
-    //place for unified initial constructors
-    
+    Matrix(int rows, int columns = 1); //добавил конструктор с параметрами
+    //unified initial constructors
+    Matrix(initializer_list<initializer_list<double>> list);
     
     ~Matrix() {delete[] m_ptr;} //destructor(~ обозначает деструктор)
     //copying and assignment opperators(используем operator= для перегрузки)
