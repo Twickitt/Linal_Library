@@ -72,8 +72,8 @@ public:
     double det() const;
     int rank() const noexcept;
     //friend is using to access internal resources of matrix
-    friend Matrix gauss_forward(); //Gaussian method forward 
-    friend Matrix gauss_backward(); //Gaussian method backward 
+    Matrix& gauss_forward(); //Gaussian method forward 
+    Matrix& gauss_backward(); //Gaussian method backward 
     friend Matrix concatenate(const Matrix& first, const Matrix& second); //union of two matrices
     friend Matrix transpose(const Matrix& matr); //transposing our matrix 
     friend Matrix invert(const Matrix& matr); //inverting rows and cols of uor matrix
