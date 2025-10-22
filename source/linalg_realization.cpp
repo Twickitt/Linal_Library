@@ -137,8 +137,13 @@ void Matrix::swap(Matrix& other) noexcept{
     ::swap(m_ptr, other.m_ptr);
 }
 
+//helping methods 
+Matrix Matrix::upper_triang() const{
+    
+}
 
+//Matrix substraction
+Matrix Matrix::operator -() const{
 
-
-
+}
 
