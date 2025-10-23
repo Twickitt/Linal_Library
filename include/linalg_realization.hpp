@@ -86,5 +86,7 @@ public:
 
     //helping methods
     friend inline bool size_check(const Matrix& first, const Matrix& second){return first.m_rows == second.m_rows && first.m_columns ==second.m_columns;};
+    Matrix upper_triang(int& expression_sign) const;
+    Matrix lover_triang(int& expression_sign) const;
 };
 }
