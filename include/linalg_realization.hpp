@@ -29,7 +29,7 @@ public:
     void clear() noexcept; // очистка матрицы не дает исключений и ошибок, вместимость прежняя 
     void shrink_to_fit();
     void swap(Matrix& other) noexcept; //смена элементов тоже не дает исключений и ошибок
-    void swap(Matrix& first, Matrix& second) noexcept {first.swap(second);} //глобальная функция обмена между двумя матрицами 
+    friend void swap(Matrix& first, Matrix& second) noexcept {first.swap(second);} //глобальная функция обмена между двумя матрицами 
     
     //matrix constructors 
     Matrix() noexcept : m_rows{0}, m_columns{0}, m_capacity{0}, m_ptr(nullptr){} //default constr, m_capacity = 0 because of 0 size of the matrix 
@@ -38,31 +38,35 @@ public:
     Matrix(int rows, int columns = 1); //добавил конструктор с параметрами
     //unified initial constructors
     Matrix(initializer_list<initializer_list<double>> list);
+    Matrix(initializer_list<double> list, size_t columns = 1);
     
     ~Matrix() {delete[] m_ptr;} //destructor(~ обозначает деструктор)
     //copying and assignment opperators(используем operator= для перегрузки)
     Matrix& operator=(const Matrix& other); // оператор копирующего присваивания 
     Matrix& operator=(Matrix&& other) noexcept; // оператор перемещающего присваивания(не const так как забирает русурсы у объекта при копировании)
-    //matrix Operators
     
+    double& operator()(size_t row, size_t column);
+    const double& operator()(size_t row, size_t column) const; 
+    
+    //matrix computation operators
     //subtraction  
     Matrix operator -() const;
-    friend Matrix operator -(const Matrix& other);
+    friend Matrix operator -(const Matrix& first, const Matrix& second);
     Matrix& operator -=(const Matrix& other);
     
     //smmation
     Matrix operator +() const;
-    friend Matrix operator +(const Matrix& other);
+    friend Matrix operator +(const Matrix& first, const Matrix& second);
     Matrix& operator +=(const Matrix& other);
     
     //checking equalities and inequalities
-    bool operator ==(const Matrix&) const;
-    bool operator !=(const Matrix&) const;
+    bool operator ==(const Matrix& other) const;
+    bool operator !=(const Matrix& other) const;
     
     //multiplication
-    Matrix operator *(const Matrix& other); //матрица на матрицу 
-    friend Matrix operator *(double x, const Matrix& other); //число на матрицу  
+    Matrix operator *(const Matrix& other) const; //матрица на матрицу 
     Matrix operator *(double x) const;
+    friend Matrix operator *(double x, const Matrix& other); //число на матрицу  
     Matrix& operator *=(const Matrix& other); //умножение и присваивание результата операции
     Matrix& operator *=(double x); //поэлементарное умножение и присваивание результата 
 
@@ -81,7 +85,6 @@ public:
     friend Matrix solve(const Matrix& matr, const Matrix& vector); //solving matrix equation
 
     //helping methods
-    Matrix upper_triang() const;
-
+    friend inline bool size_check(const Matrix& first, const Matrix& second){return first.m_rows == second.m_rows && first.m_columns ==second.m_columns;};
 };
 }
