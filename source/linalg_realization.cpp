@@ -1,10 +1,4 @@
-#include <stdio.h>
 #include "linalg_realization.hpp"
-#include <cstdlib>
-#include <cmath> 
-#include <stdexcept>
-#include <iomanip>
-#include <sstream>
 
 using namespace linalg;
 using std::cout;
@@ -14,6 +8,8 @@ using std::initializer_list;
 using std::swap;
 using std::abs;
 using std::fabs;
+
+constexpr double EPS = 1e-12;
 
 
 //constructors
@@ -79,6 +75,11 @@ Matrix Matrix::uno(size_t size) {
     return res;
     }
 
+linalg::Matrix::Matrix(size_t rows, size_t cols, double value) : m_rows(rows), m_columns(cols), m_capacity(rows*cols){
+    m_ptr = new double[m_capacity];
+    std::fill(m_ptr, m_ptr + m_capacity, value);//start, finish, chosen elem
+}
+
 //operators
 Matrix& Matrix::operator=(const Matrix& other){ //copy assignment operator
     if(this == &other)//checking if matrix is the same to avoid copying same matrices
@@ -121,11 +122,17 @@ Matrix& Matrix::operator=(Matrix&& other) noexcept{
 
 //matrix modifications
 void Matrix::reshape(size_t rows, size_t cols){
-    if(rows *cols != matr_size())
-        throw std::invalid_argument("Matrix capacity must be the same");
+    if (rows == 0 || cols == 0){
+            m_rows = 0; 
+            m_columns = 0;
+        }
+        if (m_rows == rows && m_columns == cols)
+            return; 
 
-    m_rows = rows;
-    m_columns = cols;
+        reserve(rows * cols);
+        m_rows = rows;
+        m_columns = cols;
+
 }
 
 void Matrix::reserve(size_t n){
@@ -198,8 +205,8 @@ const double& Matrix::operator()(size_t row, size_t column) const{
 Matrix Matrix::operator -() const{
     Matrix res = *this;
 
-    for(size_t i = 0; i < matr_size(); ++i)
-        m_ptr[i] = -m_ptr[i];
+    for(size_t i = 0; i < size(); ++i)
+        res.m_ptr[i] = -m_ptr[i];
 
     return res; 
 }
@@ -210,7 +217,7 @@ Matrix Matrix::operator +() const{
 
 Matrix linalg::operator -(const Matrix& first, const Matrix& second){
     if(!size_check(first, second))
-        throw std::invalid_argument("Operation can't be complited because of size diff");
+        throw std::runtime_error("Operation can't be complited because of size diff");
     
     Matrix res = first;
     res -= second;
@@ -219,7 +226,7 @@ Matrix linalg::operator -(const Matrix& first, const Matrix& second){
 
 Matrix linalg::operator +(const Matrix& first, const Matrix& second){
     if(!size_check(first, second))
-        throw std::invalid_argument("Operation can't be complited because of size diff");
+        throw std::runtime_error("Operation can't be complited because of size diff");
 
     Matrix res = first;
     res += second;
@@ -228,9 +235,9 @@ Matrix linalg::operator +(const Matrix& first, const Matrix& second){
 
 Matrix& Matrix::operator -=(const Matrix& other){
     if(!size_check(*this, other))
-        throw std::invalid_argument("Operation can't be complited because of size diff");
+        throw std::runtime_error ("Operation can't be complited because of size diff");
 
-    for(size_t i = 0; i < matr_size(); ++i)
+    for(size_t i = 0; i < size(); ++i)
         m_ptr[i] -= other.m_ptr[i];
     
     return *this;
@@ -238,9 +245,9 @@ Matrix& Matrix::operator -=(const Matrix& other){
 
 Matrix& Matrix::operator +=(const Matrix& other){
     if(!size_check(*this, other))
-        throw std::invalid_argument("Operation can't be complited because of size diff");
+        throw std::runtime_error("Operation can't be complited because of size diff");
 
-    for(size_t i = 0; i < matr_size(); ++i)
+    for(size_t i = 0; i < size(); ++i)
         m_ptr[i] += other.m_ptr[i];
     
     return *this;
@@ -250,7 +257,7 @@ bool Matrix::operator ==(const Matrix& other) const{
     if(!size_check(*this, other))
         return false;
 
-    for(size_t i = 0; i < matr_size(); ++i){
+    for(size_t i = 0; i < size(); ++i){
         if(!are_equal(m_ptr[i], other.m_ptr[i]))
             return false;
     }
@@ -265,7 +272,7 @@ bool Matrix::operator !=(const Matrix& other) const{
 
 Matrix Matrix::operator *(const Matrix& other) const{
     if(m_columns != other.m_rows)
-        throw std::invalid_argument("Operation can't be complited because of because of multiplication rules of matrices");
+        throw std::runtime_error("Operation can't be complited because of because of multiplication rules of matrices");
     
     Matrix res(*this);
     res *= other;
@@ -274,7 +281,7 @@ Matrix Matrix::operator *(const Matrix& other) const{
 
 Matrix Matrix::operator *(double x) const{
     Matrix res(m_rows, m_columns);
-    for(size_t i = 0; i < matr_size(); ++i)
+    for(size_t i = 0; i < size(); ++i)
         res.m_ptr[i] = m_ptr[i] * x;
     
     return res; 
@@ -286,7 +293,7 @@ Matrix linalg::operator *(double x, const Matrix& other){
 
 Matrix& Matrix::operator *=(const Matrix& other){
     if(m_columns != other.m_rows)
-        throw std::invalid_argument("Operation can't be complited because of multiplication rules of matrices");
+        throw std::runtime_error("Operation can't be complited because of multiplication rules of matrices");
 
     Matrix res(m_rows, other.m_columns);
     for(size_t i = 0; i < m_rows; ++i){
@@ -308,7 +315,7 @@ Matrix& Matrix::operator *=(const Matrix& other){
 } 
 
 Matrix& Matrix::operator*=(double x) {
-    for (size_t i = 0; i < matr_size(); ++i) {
+    for (size_t i = 0; i < size(); ++i) {
         m_ptr[i] *= x;
     }
     
@@ -317,144 +324,133 @@ Matrix& Matrix::operator*=(double x) {
 
 double Matrix::norm() const noexcept{
     double sum{0};
-    for (const double* el = matr_begin(); el != matr_end(); ++el)
+    for (const double* el = begin(); el != end(); ++el)
         sum += (*el) * (*el);
     return std::sqrt(sum);
 }
 
-double Matrix::trace() const noexcept{
+double Matrix::trace() const{
     if(m_rows != m_columns)
-        throw std::invalid_argument("Operation can't be complited because finding trace is only possible for square matrices");
+        throw std::runtime_error("Operation can't be complited because finding trace is only possible for square matrices");
     
     double sum = 0.0;
-    for(size_t i = 0; i < matr_size(); i+=(m_columns + 1)){
+    for(size_t i = 0; i < size(); i+=(m_columns + 1)){
         sum+= m_ptr[i];
     }
 
     return sum;
 }
 
-double Matrix::det() const{
-    if(m_rows != m_columns)
-        throw std::invalid_argument("Operation can't be complited because finding det is only possible for square matrices");
+double Matrix::det() const {
+    if (m_rows != m_columns || m_columns == 0 || m_rows == 0)
+        throw std::runtime_error("Operation can't be completed: determinant is only defined for square matrices");
 
     int expression_sign = 0;
-    double determinant = 1.0;
-    Matrix Upper_Triangular = this->upper_triang(expression_sign);
-    for(size_t i = 0; i < m_rows; ++i)
-        determinant*=Upper_Triangular(i, i);
+    Matrix upper = linalg::upper_triang(*this, expression_sign);
 
-    if(expression_sign % 2 != 0)
-        determinant= -determinant;
+    double determinant = 1.0;
+    for (size_t i = 0; i < m_rows; ++i)
+        determinant *= upper(i, i);
+
+    if (expression_sign % 2 != 0)
+        determinant = -determinant;
+
 
     return determinant;
-    
 }
 
-int Matrix::rank() const noexcept{
+int Matrix::rank() const {
+    if(this->rows()==0 || this->columns() == 0)
+        throw std::runtime_error("Can't find rank of inproper matrix");
     int rank = 0;
     int useless = 0;
-    Matrix Upper_Triangular = this->upper_triang(useless);
-    for(size_t i = 0; i < m_rows; ++i){
-        
-        for(size_t j = 0; i < m_columns; ++j){
-            
-            if(!are_equal(Upper_Triangular(i, j), 0.0)){
+    Matrix Upper_Triangular = linalg::upper_triang(*this, useless);
+    for (size_t i = 0; i < m_rows; ++i) {
+        for (size_t j = 0; j < m_columns; ++j) {
+            if (!are_equal(Upper_Triangular(i, j), 0.0)) {
                 rank++;
-                break;//collapsing cycle for j 
+                break; // переходим к следующей строке
             }
-
         }
-
     }
     return rank;
 }
 
-Matrix& Matrix::gauss_forward(){
-    int useless = 0; 
-    Matrix Upper = upper_triang(useless);
-    for(size_t i = 0; i < m_rows; ++i){
-
-        for(size_t j = 0; i < m_columns; ++j)
-            (*this)(i, j) = Upper(i, j);         
-    }
+Matrix& Matrix::gauss_forward() {
+    int expression_sign = 0;
+    *this = linalg::upper_triang(*this, expression_sign);
     return *this;
 }
 
-Matrix& Matrix::gauss_backward(){
-    int useless = 0; 
-    Matrix Lower = lover_triang(useless);
-    for(size_t i = 0; i < m_rows; ++i){
-
-        for(size_t j = 0; i < m_columns; ++j)
-            (*this)(i, j) = Lower(i, j);         
-    }
+Matrix& Matrix::gauss_backward() {
+    int expression_sign = 0;
+    *this = linalg::lover_triang(*this, expression_sign);
     return *this;
 }
 
-Matrix Matrix::concatenate(const Matrix& first, const Matrix& second){
-    if (first.m_rows != second.m_rows)
-        throw std::invalid_argument("Matrices must have the same amount of rows to proceed");
+Matrix linalg::concatenate(const Matrix& first, const Matrix& second) {
+    if (first.rows() != second.rows() || first.rows() ==0 || first.columns() == 0 || second.rows() == 0 || second.columns() == 0)
+        throw std::runtime_error("Matrices must have the same amount of rows to proceed");
 
-    Matrix res(first.m_rows, second.m_columns + second.m_columns);
-    for (size_t i = 0; i < first.m_rows; ++i) {
-        //copying first matrix
-        for (size_t j = 0; j < first.m_columns; ++j)
+    Matrix res(first.rows(), first.columns() + second.columns());
+    for (size_t i = 0; i < first.rows(); ++i) {
+        for (size_t j = 0; j < first.columns(); ++j)
             res(i, j) = first(i, j);
-        //copying second matrix
-        for (size_t j = 0; j < second.m_columns; ++j)
-            res(i, j + first.m_columns) = second(i, j);
+        for (size_t j = 0; j < second.columns(); ++j)
+            res(i, j + first.columns()) = second(i, j);
     }
     return res;
 }
 
-Matrix Matrix::transpose(const Matrix& matr){
-    Matrix res(matr.m_columns, matr.m_rows);
-    for (size_t i = 0; i < matr.m_rows; ++i)
-        for (size_t j = 0; j < matr.m_columns; ++j)
-            res(j, i) = matr(i, j);
 
+Matrix linalg::transpose(const Matrix& matr) {
+    if(matr.rows() == 0 || matr.columns() == 0)
+        throw std::runtime_error("Matrix can't be transposed");
+    Matrix res(matr.columns(), matr.rows());
+    for (size_t i = 0; i < matr.rows(); ++i)
+        for (size_t j = 0; j < matr.columns(); ++j)
+            res(j, i) = matr(i, j);
     return res;
 }
 
-Matrix Matrix::invert(const Matrix& matr){
-    if (matr.m_rows != matr.m_columns)
-        throw std::invalid_argument("Matrix must be square to invert");
-
-    size_t size = matr.m_rows;
-    Matrix hz = concatenate(matr, uno(size)); 
+Matrix linalg::invert(const Matrix& matr) {
+    if (matr.rows() != matr.columns())
+        throw std::runtime_error("Matrix must be square to invert");
+    if(matr.empty())
+        throw std::runtime_error("Empty matrix isn't valid for this action");
+    if(std::abs(matr.det()) < EPS)
+        throw std::runtime_error("Matrices with zero det can't have opposite matrix");
+    size_t size = matr.rows();
+    Matrix hz = concatenate(matr, Matrix::uno(size));
     hz.gauss_forward();
     hz.gauss_backward();
+
     for (size_t i = 0; i < size; ++i) {
         double diag = hz(i, i);
-        
-        for (size_t j = 0; j < 2*size; ++j)
-            hz(i, j) /= diag;  //making left side single
-        }
-    //selecting right half as opposite
+        for (size_t j = 0; j < 2 * size; ++j)
+            hz(i, j) /= diag;
+    }
+
     Matrix inv(size, size);
     for (size_t i = 0; i < size; ++i)
-        
         for (size_t j = 0; j < size; ++j)
-            inv(i, j) = hz(i, j + size);//we got opposite matrix 
+            inv(i, j) = hz(i, j + size);
 
     return inv;
 }
 
-Matrix Matrix::power(const Matrix& matr, int digit){
+Matrix linalg::power(const Matrix& matr, int digit) {
     if (digit < 0)
-        throw std::invalid_argument("Only positive powers allowed");
-
-    if(digit = 0)
-        return uno(matr.matr_size());
-    
-    if (matr.m_rows != matr.m_columns)
-        throw std::invalid_argument("Operation can't be complited because finding det is only possible for square matrices");
-
-    Matrix res = Matrix::uno(matr.m_rows);//to make multiplication properly
+        throw std::runtime_error("Only positive powers allowed");
+    if (digit == 0)
+        return Matrix::uno(matr.rows());
+    if (matr.rows() != matr.columns())
+        throw std::runtime_error("Matrix must be square");
+    if(digit == 1)
+        return matr;
+    Matrix res = Matrix::uno(matr.rows());
     Matrix main = matr;
-    while (digit > 0){
-        
+    while (digit > 1) {
         if (digit % 2 == 1)
             res *= main;
         main *= main;
@@ -463,111 +459,101 @@ Matrix Matrix::power(const Matrix& matr, int digit){
     return res;
 }
 
-Matrix Matrix::solve(const Matrix& matr, const Matrix& vector){
-    if (matr.m_rows != matr.m_columns)
-        throw std::invalid_argument("This solve is only availible for square matrices");
-    
-    if (vector.m_rows != matr.m_rows || vector.m_columns != 1)
-        throw std::invalid_argument("Vector must have the same ammount of rows as matr");
+Matrix linalg::solve(const Matrix& matr, const Matrix& vector) {
+    if (matr.rows() != matr.columns() || matr.rows() == 0 || matr.columns() == 0)
+        throw std::runtime_error("This solve is only available for square matrices");
+    if (vector.rows() != matr.rows() || vector.columns() != 1)
+        throw std::runtime_error("Vector must have the same number of rows as matrix");
+    if(matr.empty() && vector.empty())
+        throw std::runtime_error("Infinity ammount of sollutions");
+    if((matr.empty() && !vector.empty()) || (!matr.empty() && vector.empty()))
+        throw std::runtime_error("One of this matrices is empty, so no solution");
 
     Matrix united = concatenate(matr, vector);
     united.gauss_forward();
     united.gauss_backward();
-    Matrix solution(vector.m_rows, 1);//result is the last column
-    for (size_t i = 0; i < vector.m_rows; ++i)
-        solution(i, 0) = united(i, matr.m_columns);
+
+    Matrix solution(vector.rows(), 1);
+    for (size_t i = 0; i < vector.rows(); ++i)
+        solution(i, 0) = united(i, matr.columns());
 
     return solution;
 }
 
 
 //helping methods 
-bool are_equal(double x, double y, double eps = exp(-12)) {
-    return abs(x - y) < eps;
-}
-
-Matrix Matrix::upper_triang(int& expression_sign) const{
-    Matrix copy(*this);
+Matrix linalg::upper_triang(const Matrix& matr, int& expression_sign) {
+    Matrix copy(matr);
     expression_sign = 0;
-    for(size_t i = 0; i < m_rows; ++i){
-        
-        if(are_equal(copy(i, i), 0.0)){
-            size_t next_row = i + 1;
-            
-            while(next_row < m_rows && are_equal(copy(next_row, i), 0.0))
-                ++next_row;
-            
-            if(next_row == m_rows)
-                continue;
-            
-            for(size_t k = 0; k < m_columns; ++k)
-                ::swap(copy(i,k), copy(next_row,k)); 
-
-            expression_sign++;
-        }
-        // making nulls under diag 
-        for(size_t j = (i+1); j < m_rows; ++j){
-            double factor = copy(j,i) / copy(i,i);
-            
-            for(size_t k = i; k < m_columns; ++k)
-                copy(j,k) -= factor * copy(i, k);
-        }
-    
-    }
-
-    return copy;
-}
-
-Matrix Matrix::lover_triang(int& expression_sign) const{
-    Matrix copy(*this);
-    expression_sign = 0;
-    for (size_t i = 0; i < m_rows; ++i) {
-        
+    for (size_t i = 0; i < matr.rows(); ++i) {
         if (are_equal(copy(i, i), 0.0)) {
             size_t next_row = i + 1;
-
-            while (next_row < m_rows && are_equal(copy(next_row, i), 0.0))
+            while (next_row < matr.rows() && are_equal(copy(next_row, i), 0.0))
                 ++next_row;
-
-            if (next_row == m_rows)
-                continue; 
-
-            for (size_t k = 0; k < m_columns; ++k)
-                ::swap(copy(i, k), copy(next_row, k));
-
+            if (next_row == matr.rows())
+                continue;
+            for (size_t k = 0; k < matr.columns(); ++k)
+                std::swap(copy(i, k), copy(next_row, k));
             expression_sign++;
         }
-        // making nulls above diag 
-        for (size_t j = 0; j < i; ++j) {
+        for (size_t j = i + 1; j < matr.rows(); ++j) {
             double factor = copy(j, i) / copy(i, i);
-            for (size_t k = i; k < m_columns; ++k)
+            for (size_t k = i; k < matr.columns(); ++k)
                 copy(j, k) -= factor * copy(i, k);
         }
     }
+    return copy;
+}
 
+Matrix linalg::lover_triang(const Matrix& matr, int& expression_sign) {
+    Matrix copy(matr);
+    expression_sign = 0;
+    for (size_t i = 0; i < matr.rows(); ++i) {
+        if (are_equal(copy(i, i), 0.0)) {
+            size_t next_row = i + 1;
+            while (next_row < matr.rows() && are_equal(copy(next_row, i), 0.0))
+                ++next_row;
+            if (next_row == matr.rows())
+                continue;
+            for (size_t k = 0; k < matr.columns(); ++k)
+                std::swap(copy(i, k), copy(next_row, k));
+            expression_sign++;
+        }
+        for (size_t j = 0; j < i; ++j) {
+            double factor = copy(j, i) / copy(i, i);
+            for (size_t k = i; k < matr.columns(); ++k)
+                copy(j, k) -= factor * copy(i, k);
+        }
+    }
     return copy;
 }
 
 //output
-std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
-    int width = 0;
-    for (size_t i = 0; i < mat.matr_rows(); ++i) {
-        for (size_t j = 0; j < mat.matr_columns(); ++j) {
-            std::ostringstream ss;
-            ss << mat(i, j);
-            int len = ss.str().length();
-            if (len > width) width = len;
-        }
-    }
-    width += 1; 
-
-    for (size_t i = 0; i < mat.matr_rows(); ++i) {
-        os << "|";
-        for (size_t j = 0; j < mat.matr_columns(); ++j) {
-            os << std::setw(width) << mat(i, j);
-        }
-        os << " |\n";
+std::ostream& linalg::operator<<(std::ostream& out, const Matrix& m) {
+    if (m.empty()) {
+        out << "||";
+        return out;
     }
 
-    return os;
+    // Находим максимальную ширину в каждом столбце
+    std::vector<size_t> col_widths(m.columns(), 0);
+    for (size_t j = 0; j < m.columns(); ++j) {
+        for (size_t i = 0; i < m.rows(); ++i) {
+            std::ostringstream oss;
+            oss << m(i, j);
+            col_widths[j] = std::max(col_widths[j], oss.str().length());
+        }
+    }
+
+    // Выводим матрицу с выравниванием
+    for (size_t i = 0; i < m.rows(); ++i) {
+        out << "|";
+        for (size_t j = 0; j < m.columns(); ++j) {
+            if (j > 0) out << " ";
+            out << std::setw(col_widths[j]) << m(i, j);
+        }
+        out << "|\n"; // \n для каждой строки, как ожидает тест
+    }
+
+    return out;
 }

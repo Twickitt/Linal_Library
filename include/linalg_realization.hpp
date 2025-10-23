@@ -3,6 +3,14 @@
 #include <ostream>
 #include <iomanip>
 #include <sstream>
+#include <stdio.h>
+#include <cstdlib>
+#include <cmath> 
+#include <stdexcept>
+#include <iomanip>
+#include <sstream>
+#include <algorithm>
+
 
 
 
@@ -16,17 +24,20 @@ private:
     //sources
     double* m_ptr = nullptr; //отметим его нулевым указателем ради избежания возможных ошибок(UB) в дальнейшем(например при вызове дистрактора)
     size_t m_rows, m_columns, m_capacity;
+    
 
 public:
     //metods 
-    bool matr_empty() const {return m_rows == 0 || m_columns == 0;}
-    size_t matr_rows() const {return m_rows;}
-    size_t matr_columns() const {return m_columns;}
-    size_t matr_capacity() const {return m_capacity;}
-    size_t matr_size() const {return m_columns * m_rows;}
-    const double* matr_begin() const {return m_ptr;} //указатель на 1 элемент матрицы  
-    const double* matr_end () const {return m_ptr ? m_ptr + matr_size(): m_ptr;} //если m_ptr не nullptr, то вернёт m_ptr + size(). а если m_ptr =nullptr, тогда вернет nullptr; ?-тернарный оператор(сокращенный вар. if ... else)
-    
+    bool empty() const {return m_rows == 0 || m_columns == 0;}
+    size_t rows() const {return m_rows;}
+    size_t columns() const {return m_columns;}
+    size_t capacity() const {return m_capacity;}
+    size_t size() const {return m_columns * m_rows;}
+    const double* begin() const {return m_ptr;} //указатель на 1 элемент матрицы  
+    const double* end () const {return m_ptr ? m_ptr + size(): m_ptr;} //если m_ptr не nullptr, то вернёт m_ptr + size(). а если m_ptr =nullptr, тогда вернет nullptr; ?-тернарный оператор(сокращенный вар. if ... else)
+    double* begin() { return m_ptr; }
+    double* end() {return m_ptr ? m_ptr + size(): m_ptr; }
+
     //matrix modification methods
     void reshape(size_t rows, size_t cols);
     void reserve(size_t n);
@@ -40,6 +51,7 @@ public:
     Matrix(const Matrix& other); //copying constr, no noexcept потому, что не можем гарантировать отсутствие исключений(например при выделении памяти)
     Matrix(Matrix&& other) noexcept; //moving constr
     Matrix(int rows, int columns = 1); //добавил конструктор с параметрами
+    Matrix(size_t rows, size_t cols, double value);
     //unified initial constructors
     Matrix(initializer_list<initializer_list<double>> list);
     Matrix(initializer_list<double> list, size_t columns = 1);
@@ -49,7 +61,7 @@ public:
     Matrix& operator=(const Matrix& other); // оператор копирующего присваивания 
     Matrix& operator=(Matrix&& other) noexcept; // оператор перемещающего присваивания(не const так как забирает русурсы у объекта при копировании)
 
-    static Matrix Matrix::uno(size_t size);
+    static Matrix uno(size_t size);
     
     double& operator()(size_t row, size_t column);
     const double& operator()(size_t row, size_t column) const; 
@@ -78,23 +90,22 @@ public:
 
     //computational operations
     double norm() const noexcept;
-    double trace() const noexcept;
+    double trace() const;
     double det() const;
-    int rank() const noexcept;
+    int rank() const;
     Matrix& gauss_forward(); //Gaussian method forward 
     Matrix& gauss_backward(); //Gaussian method backward 
-    Matrix concatenate(const Matrix& first, const Matrix& second); //union of two matrices
-    Matrix transpose(const Matrix& matr); //transposing our matrix 
-    Matrix invert(const Matrix& matr); //inverting rows and cols of our matrix
-    Matrix power(const Matrix& matr, int digit); //raising our matrix to a power
-    Matrix solve(const Matrix& matr, const Matrix& vector); //solving matrix equation
-
     //helping methods
     friend inline bool size_check(const Matrix& first, const Matrix& second){return first.m_rows == second.m_rows && first.m_columns ==second.m_columns;};
-    Matrix upper_triang(int& expression_sign) const;
-    Matrix lover_triang(int& expression_sign) const;
+    
 };
+Matrix concatenate(const Matrix& first, const Matrix& second);
+Matrix transpose(const Matrix& matr);
+Matrix invert(const Matrix& matr);
+Matrix power(const Matrix& matr, int digit);
+Matrix solve(const Matrix& matr, const Matrix& vector);
+Matrix upper_triang(const Matrix& matr, int& expression_sign);
+Matrix lover_triang(const Matrix& matr, int& expression_sign);
+std::ostream& operator<<(std::ostream& out, const Matrix& m);
 }
-
-//output
-std::ostream& operator<<(std::ostream& os, const Matrix& mat);
+inline bool are_equal(double x, double y, double eps = exp(-12)) {return abs(x - y) < eps;}
