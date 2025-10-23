@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cmath> 
 #include <stdexcept>
+#include <iomanip>
+#include <sstream>
 
 using namespace linalg;
 using std::cout;
@@ -544,4 +546,28 @@ Matrix Matrix::lover_triang(int& expression_sign) const{
     }
 
     return copy;
+}
+
+//output
+std::ostream& operator<<(std::ostream& os, const Matrix& mat) {
+    int width = 0;
+    for (size_t i = 0; i < mat.matr_rows(); ++i) {
+        for (size_t j = 0; j < mat.matr_columns(); ++j) {
+            std::ostringstream ss;
+            ss << mat(i, j);
+            int len = ss.str().length();
+            if (len > width) width = len;
+        }
+    }
+    width += 1; 
+
+    for (size_t i = 0; i < mat.matr_rows(); ++i) {
+        os << "|";
+        for (size_t j = 0; j < mat.matr_columns(); ++j) {
+            os << std::setw(width) << mat(i, j);
+        }
+        os << " |\n";
+    }
+
+    return os;
 }

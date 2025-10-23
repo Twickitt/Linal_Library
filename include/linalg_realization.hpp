@@ -1,5 +1,9 @@
 #include <iostream>
 #include <initializer_list>
+#include <ostream>
+#include <iomanip>
+#include <sstream>
+
 
 
 namespace linalg{
@@ -91,3 +95,6 @@ public:
     Matrix lover_triang(int& expression_sign) const;
 };
 }
+
+//output
+std::ostream& operator<<(std::ostream& os, const Matrix& mat);
