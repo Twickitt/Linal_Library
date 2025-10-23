@@ -2,6 +2,7 @@
 #include "linalg_realization.hpp"
 #include <cstdlib>
 #include <cmath> 
+#include <stdexcept>
 
 using namespace linalg;
 using std::cout;
@@ -68,6 +69,13 @@ Matrix::Matrix(initializer_list<double> list, size_t columns){
     for(double val : list)
         m_ptr[i++] = val;
 }
+
+Matrix Matrix::uno(size_t size) {
+    Matrix res(size, size);
+    for (size_t i = 0; i < size; ++i)
+        res(i, i) = 1.0;  
+    return res;
+    }
 
 //operators
 Matrix& Matrix::operator=(const Matrix& other){ //copy assignment operator
@@ -381,6 +389,95 @@ Matrix& Matrix::gauss_backward(){
     }
     return *this;
 }
+
+Matrix Matrix::concatenate(const Matrix& first, const Matrix& second){
+    if (first.m_rows != second.m_rows)
+        throw std::invalid_argument("Matrices must have the same amount of rows to proceed");
+
+    Matrix res(first.m_rows, second.m_columns + second.m_columns);
+    for (size_t i = 0; i < first.m_rows; ++i) {
+        //copying first matrix
+        for (size_t j = 0; j < first.m_columns; ++j)
+            res(i, j) = first(i, j);
+        //copying second matrix
+        for (size_t j = 0; j < second.m_columns; ++j)
+            res(i, j + first.m_columns) = second(i, j);
+    }
+    return res;
+}
+
+Matrix Matrix::transpose(const Matrix& matr){
+    Matrix res(matr.m_columns, matr.m_rows);
+    for (size_t i = 0; i < matr.m_rows; ++i)
+        for (size_t j = 0; j < matr.m_columns; ++j)
+            res(j, i) = matr(i, j);
+
+    return res;
+}
+
+Matrix Matrix::invert(const Matrix& matr){
+    if (matr.m_rows != matr.m_columns)
+        throw std::invalid_argument("Matrix must be square to invert");
+
+    size_t size = matr.m_rows;
+    Matrix hz = concatenate(matr, uno(size)); 
+    hz.gauss_forward();
+    hz.gauss_backward();
+    for (size_t i = 0; i < size; ++i) {
+        double diag = hz(i, i);
+        
+        for (size_t j = 0; j < 2*size; ++j)
+            hz(i, j) /= diag;  //making left side single
+        }
+    //selecting right half as opposite
+    Matrix inv(size, size);
+    for (size_t i = 0; i < size; ++i)
+        
+        for (size_t j = 0; j < size; ++j)
+            inv(i, j) = hz(i, j + size);//we got opposite matrix 
+
+    return inv;
+}
+
+Matrix Matrix::power(const Matrix& matr, int digit){
+    if (digit < 0)
+        throw std::invalid_argument("Only positive powers allowed");
+
+    if(digit = 0)
+        return uno(matr.matr_size());
+    
+    if (matr.m_rows != matr.m_columns)
+        throw std::invalid_argument("Operation can't be complited because finding det is only possible for square matrices");
+
+    Matrix res = Matrix::uno(matr.m_rows);//to make multiplication properly
+    Matrix main = matr;
+    while (digit > 0){
+        
+        if (digit % 2 == 1)
+            res *= main;
+        main *= main;
+        digit /= 2;
+    }
+    return res;
+}
+
+Matrix Matrix::solve(const Matrix& matr, const Matrix& vector){
+    if (matr.m_rows != matr.m_columns)
+        throw std::invalid_argument("This solve is only availible for square matrices");
+    
+    if (vector.m_rows != matr.m_rows || vector.m_columns != 1)
+        throw std::invalid_argument("Vector must have the same ammount of rows as matr");
+
+    Matrix united = concatenate(matr, vector);
+    united.gauss_forward();
+    united.gauss_backward();
+    Matrix solution(vector.m_rows, 1);//result is the last column
+    for (size_t i = 0; i < vector.m_rows; ++i)
+        solution(i, 0) = united(i, matr.m_columns);
+
+    return solution;
+}
+
 
 //helping methods 
 bool are_equal(double x, double y, double eps = exp(-12)) {

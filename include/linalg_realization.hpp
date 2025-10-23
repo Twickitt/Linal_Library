@@ -44,6 +44,8 @@ public:
     //copying and assignment opperators(используем operator= для перегрузки)
     Matrix& operator=(const Matrix& other); // оператор копирующего присваивания 
     Matrix& operator=(Matrix&& other) noexcept; // оператор перемещающего присваивания(не const так как забирает русурсы у объекта при копировании)
+
+    static Matrix Matrix::uno(size_t size);
     
     double& operator()(size_t row, size_t column);
     const double& operator()(size_t row, size_t column) const; 
@@ -75,14 +77,13 @@ public:
     double trace() const noexcept;
     double det() const;
     int rank() const noexcept;
-    //friend is using to access internal resources of matrix
     Matrix& gauss_forward(); //Gaussian method forward 
     Matrix& gauss_backward(); //Gaussian method backward 
-    friend Matrix concatenate(const Matrix& first, const Matrix& second); //union of two matrices
-    friend Matrix transpose(const Matrix& matr); //transposing our matrix 
-    friend Matrix invert(const Matrix& matr); //inverting rows and cols of uor matrix
-    friend Matrix power(const Matrix& matr, int digit); //raising our matrix to a power
-    friend Matrix solve(const Matrix& matr, const Matrix& vector); //solving matrix equation
+    Matrix concatenate(const Matrix& first, const Matrix& second); //union of two matrices
+    Matrix transpose(const Matrix& matr); //transposing our matrix 
+    Matrix invert(const Matrix& matr); //inverting rows and cols of our matrix
+    Matrix power(const Matrix& matr, int digit); //raising our matrix to a power
+    Matrix solve(const Matrix& matr, const Matrix& vector); //solving matrix equation
 
     //helping methods
     friend inline bool size_check(const Matrix& first, const Matrix& second){return first.m_rows == second.m_rows && first.m_columns ==second.m_columns;};
